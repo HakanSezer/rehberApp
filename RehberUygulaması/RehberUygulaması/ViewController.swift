@@ -10,11 +10,13 @@ import CoreData
 
 
 //MARK: - CoreData
+// Bu model ile CoreDatayı kullanılabilir hale getirdik ViewController içerisinde olmamamsı bizim her yerden ulaşmamızı sağlayacaktır.
 let appDelegate = UIApplication.shared.delegate as! AppDelegate
 
 class ViewController: UIViewController {
     
     // CoreData üzerindeki veri kayıt işlemlerini gerçekleştirmek için kullanmış olduğum kod.
+    // Silme ve Güncelleme işlemleri için gereklidir.
     let context = appDelegate.persistentContainer.viewContext
     
     
@@ -23,6 +25,10 @@ class ViewController: UIViewController {
     @IBOutlet weak var kisilerTableView: UITableView!
     
     var kisilerListesi = [Kisiler]()
+    
+    
+    var aramaYapiliyorMu = false
+    var aramaKelimesi: String?
     
     //MARK: - Life Cycle
     override func viewDidLoad() {
@@ -37,10 +43,20 @@ class ViewController: UIViewController {
     
     ///Uygulama Eski ekrana geri döndüğünde kullanıyoruz.
     override func viewWillAppear(_ animated: Bool) {
+        
+        // arama yapılıyorsa çalışacak.
+        if aramaYapiliyorMu {
+            aramaYap(kisi_ad: aramaKelimesi!)
+        }else {
+            //Listeyi güncelle
+            turKisilerAl()
+        }
+        
         //Listeyi güncelle
         turKisilerAl()
         
         //Uygulama'ya geri dönünce TableView'ın yenilenmesini sağlar.
+        // Ara yüzde çalıştığımız için güncelleme buttonuna tıkladıktan ve geri döndükten sonra çalışan kodtur.
         kisilerTableView.reloadData()
     }
     
@@ -55,6 +71,8 @@ class ViewController: UIViewController {
             gidilecekVC.kisi = kisilerListesi[index!]
             
         }
+        
+        // cellForAt üzerinden hucre'ye tıkalayıp güncelle dediğimiz anda ne olacağını gösteriyoruz. Eğer identify uyuşuyorsa bu yoldan devam ediyor.
         if segue.identifier == "toGuncelle" {
             let gidilecekVC = segue.destination as! KisiGuncelleViewController
             gidilecekVC.kisi = kisilerListesi[index!]
@@ -67,6 +85,7 @@ class ViewController: UIViewController {
     }
     
     // MARK: - Function
+    // Veri tabanından tüm bilgileri alıp kişilerListesine aktarmayı sağlıyor.
     func turKisilerAl() {
         do {
             kisilerListesi = try context.fetch(Kisiler.fetchRequest())
@@ -80,6 +99,7 @@ class ViewController: UIViewController {
     func aramaYap(kisi_ad:String) {
         let fetchRequest:NSFetchRequest<Kisiler> = Kisiler.fetchRequest()
         
+        // içermiyor mu içeriyor mu diye arama yapıyor.
         fetchRequest.predicate = NSPredicate(format: "kisi_ad CONTAINS %@", kisi_ad)
         
         do {
@@ -122,13 +142,24 @@ extension ViewController: UITableViewDelegate, UITableViewDataSource {
         let silAction = UIContextualAction(style: .destructive, title: "Sil") {
             (contextualAction, view, boolValue) in
             
+            // Silmek istediğimiz nesneyi seçiyoruz.
             let kisi = self.kisilerListesi[indexPath.row]
             
             self.context.delete(kisi)
             
             appDelegate.saveContext()
             
-            self.turKisilerAl()
+            // Ekranı güncelleyen kodtur. Arama yaptığı sırada bir şeyi sildiğimizde alt kalan farklı bir hucreyi buraya çıkarmamasını sağlıyor.
+            // arama yapılıyorsa çalışacak.
+            if self.aramaYapiliyorMu {
+                self.aramaYap(kisi_ad: self.aramaKelimesi!)
+            }else {
+                //Listeyi güncelle
+                self.turKisilerAl()
+            }
+            
+            // Sildikten sonra ara yüzü yeniliyoruz.
+            //self.turKisilerAl()
             self.kisilerTableView.reloadData()
             
         }
@@ -147,11 +178,18 @@ extension ViewController: UISearchBarDelegate {
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         print("Arama Sonuc: \(searchText)")
         
+        // Arama kelimesi bölümüne harfi kayıt etti ve if döngüsüne attı.
+        aramaKelimesi = searchText
+        
         // Bu kod ile birlikte harfleri sildiğim zaman o harfe göre arama yapmaya devam ediyor.
+        //
         if searchText == "" {
+            aramaYapiliyorMu = false
             turKisilerAl()
         }else {
-            aramaYap(kisi_ad: searchText)
+            // arama yapılıyorsa çalışır.
+            aramaYapiliyorMu = true
+            aramaYap(kisi_ad: aramaKelimesi!)
         }
         
         kisilerTableView.reloadData()

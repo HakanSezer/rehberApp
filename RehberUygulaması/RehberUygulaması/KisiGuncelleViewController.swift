@@ -31,10 +31,12 @@ class KisiGuncelleViewController: UIViewController {
     
     @IBAction func guncelle(_ sender: Any) {
         
+        // verileri aldı ve içerisine yerleştirdi.
         if let k = kisi ,let ad = kisiAdTextField.text , let tel = kisiTelTextField.text {
             k.kisi_ad = ad
             k.kisi_tel = tel
             
+            // Kaydetme kodu.
             appDelegate.saveContext()
         }
     }
